@@ -13,6 +13,7 @@ cd $GOPATH/src/github.com/iambocai
 git clone https://github.com/iambocai/mailer.git
 cd mailer
 go get ./...
+chmod 755 control
 ./control build
 # vi cfg.json modify configuration
 ./control start
@@ -45,7 +46,7 @@ FAQ
 
 - remote not in whitelist: 发起请求的客户端不在白名单中，请检查配置
 - body is blank: 请求方式必须是POST
-- connot decode body: 参数不完整，必须有tos，subject，content三个参数，且不为空
+- param error: 参数不完整，必须有tos，subject，content三个参数，且不为空
 - send mail error:  与smtp交互失败，请查看日志获得具体原因
 
 4. 请求返回success，但收件方未收到信

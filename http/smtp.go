@@ -28,7 +28,7 @@ func configSmtpRoutes() {
 
 		req.ParseForm()
 		if len(req.Form["tos"]) == 0 || len(req.Form["content"]) == 0 || len(req.Form["subject"]) == 0 {
-			http.Error(w, "connot decode body", http.StatusBadRequest)
+			http.Error(w, "param error", http.StatusBadRequest)
 			return
 		}
 
