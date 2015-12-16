@@ -3,9 +3,10 @@ package http
 import (
 	"encoding/json"
 	"log"
-	"mailer/g"
 	"net/http"
 	_ "net/http/pprof"
+
+	"github.com/iambocai/mailer/g"
 )
 
 type Dto struct {

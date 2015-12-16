@@ -2,11 +2,12 @@ package http
 
 import (
 	"log"
-	"mailer/g"
 	"net"
 	"net/http"
 	"net/smtp"
 	"strings"
+
+	"github.com/iambocai/mailer/g"
 )
 
 func configSmtpRoutes() {

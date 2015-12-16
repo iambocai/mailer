@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"mailer/g"
-	"mailer/http"
+	"github.com/iambocai/mailer/g"
+	"github.com/iambocai/mailer/http"
 )
 
 func main() {
