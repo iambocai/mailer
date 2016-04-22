@@ -17,29 +17,33 @@ func configSmtpRoutes() {
 		authorized := isValid(addr, allowList)
 
 		if authorized == false {
-			http.Error(w, "remote not in whitelist", http.StatusBadRequest)
+			http.Error(w, log.Println(err), http.StatusBadRequest)
+			log.Println("[ERROR] client", addr, "not authorized")
 			return
 		}
 
 		if req.ContentLength == 0 {
 			http.Error(w, "body is blank", http.StatusBadRequest)
+			log.Println("[ERROR] body is blank")
 			return
 		}
 
 		req.ParseForm()
 		if len(req.Form["tos"]) == 0 || len(req.Form["content"]) == 0 || len(req.Form["subject"]) == 0 {
 			http.Error(w, "param error", http.StatusBadRequest)
+			log.Println("[ERROR] params <tos, content, subject> must be exists and not blank")
 			return
 		}
 
 		err := SendMailBySmtp(req.Form.Get("tos"), req.Form.Get("subject"), req.Form.Get("content"))
 		if err != nil {
-			log.Println(err)
 			http.Error(w, "send mail error", http.StatusBadRequest)
+			log.Println("[ERROR] send mail error: ", err)
 			return
 		}
-
+		
 		w.Write([]byte("success"))
+		log.Println("[INFO] send mail: tos[", req.Form.Get("tos") ,"], subject[", req.Form.Get("subject") ,"]")
 	})
 }
 
