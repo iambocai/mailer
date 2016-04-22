@@ -17,7 +17,7 @@ func configSmtpRoutes() {
 		authorized := isValid(addr, allowList)
 
 		if authorized == false {
-			http.Error(w, log.Println(err), http.StatusBadRequest)
+			http.Error(w, "client not authorized", http.StatusBadRequest)
 			log.Println("[ERROR] client", addr, "not authorized")
 			return
 		}
