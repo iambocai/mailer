@@ -8,60 +8,91 @@ import (
 	"strings"
 
 	"github.com/iambocai/mailer/g"
+	"github.com/jordan-wright/email"
 )
 
 func configSmtpRoutes() {
-	http.HandleFunc("/api/mail", func(w http.ResponseWriter, req *http.Request) {
-		addr := strings.Split(req.RemoteAddr, ":")[0]
+	http.HandleFunc("/api/mail", func(w http.ResponseWriter, r *http.Request) {
+		addr := strings.Split(r.RemoteAddr, ":")[0]
 		allowList := strings.Split(g.Config().Http.WhiteList, ",")
 		authorized := isValid(addr, allowList)
 
 		if authorized == false {
-			http.Error(w, "client not authorized", http.StatusBadRequest)
-			log.Println("[ERROR] client", addr, "not authorized")
+			http.Error(w, "{\"status\":403,\"msg\":\"remote not in whitelist\"}", http.StatusBadRequest)
 			return
 		}
 
-		if req.ContentLength == 0 {
-			http.Error(w, "body is blank", http.StatusBadRequest)
-			log.Println("[ERROR] body is blank")
+		if r.ContentLength == 0 {
+			http.Error(w, "{\"status\":404,\"msg\":\"body is blank\"}", http.StatusBadRequest)
 			return
 		}
 
-		req.ParseForm()
-		if len(req.Form["tos"]) == 0 || len(req.Form["content"]) == 0 || len(req.Form["subject"]) == 0 {
-			http.Error(w, "param error", http.StatusBadRequest)
-			log.Println("[ERROR] params <tos, content, subject> must be exists and not blank")
-			return
-		}
-
-		err := SendMailBySmtp(req.Form.Get("tos"), req.Form.Get("subject"), req.Form.Get("content"))
+		err := r.ParseMultipartForm(32 << 20)
 		if err != nil {
-			http.Error(w, "send mail error", http.StatusBadRequest)
-			log.Println("[ERROR] send mail error: ", err)
+			http.Error(w, "{\"status\":400,\"msg\":\"param prase error\"}", http.StatusInternalServerError)
 			return
 		}
-		
-		w.Write([]byte("success"))
-		log.Println("[INFO] send mail: tos[", req.Form.Get("tos") ,"], subject[", req.Form.Get("subject") ,"]")
+
+		if len(r.Form["tos"]) == 0 || len(r.Form["content"]) == 0 || len(r.Form["subject"]) == 0 {
+			http.Error(w, "{\"status\":400,\"msg\":\"param tos,content or subject lost\"}", http.StatusBadRequest)
+			return
+		}
+
+		e := email.NewEmail()
+		//发件人
+		e.From = g.Config().Smtp.User
+		//收件人
+		e.To = strings.Split(r.Form.Get("tos"), g.Config().Smtp.Spliter)
+		//主题
+		e.Subject = r.Form.Get("subject")
+
+		//抄送，可选
+		if len(r.Form.Get("cc")) != 0 {
+			e.Cc = strings.Split(r.Form.Get("cc"), g.Config().Smtp.Spliter)
+		}
+		//密送，可选
+		if len(r.Form.Get("bcc")) != 0 {
+			e.Bcc = strings.Split(r.Form.Get("bcc"), g.Config().Smtp.Spliter)
+		}
+
+		//消息体格式，可选。默认为text，如果format设置为html，则以html方式发送
+		if len(r.Form.Get("format")) != 0 && r.Form.Get("format") == "html" {
+			e.HTML = []byte(r.Form.Get("content"))
+
+		} else {
+			e.Text = []byte(r.Form.Get("content"))
+		}
+
+		//附件，可选
+		if len(r.Form.Get("hasAttach")) != 0 && r.Form.Get("hasAttach") == "1" {
+			m := r.MultipartForm
+
+			//get the *fileheaders
+			files := m.File["attachments"]
+			for i, _ := range files {
+				//for each fileheader, get a handle to the actual file
+				file, err := files[i].Open()
+				defer file.Close()
+				if err != nil {
+					http.Error(w, "{\"status\":503,\"msg\":\"open attach file stream error\"}", http.StatusInternalServerError)
+					return
+				}
+				//attach each file to email
+				e.Attach(file, files[i].Filename, "")
+			}
+		}
+
+		hp := strings.Split(g.Config().Smtp.Addr, ":")
+		auth := smtp.PlainAuth("", g.Config().Smtp.User, g.Config().Smtp.Pass, hp[0])
+		error := e.Send(g.Config().Smtp.Addr, auth)
+		if error != nil {
+			log.Println(error)
+			http.Error(w, "{\"status\":500,\"msg\":\"send mail error\"}", http.StatusBadRequest)
+			return
+		}
+		log.Println(addr, e.To, e.Subject)
+		w.Write([]byte("{\"status\":0,\"msg\":\"ok\"}"))
 	})
-}
-
-//下面两个函数放g里老是调用出错，先放这里吧
-
-// 发送邮件函数
-func SendMailBySmtp(to string, subject string, content string) error {
-	var cfg = g.Config()
-
-	hp := strings.Split(cfg.Smtp.Addr, ":")
-	auth := smtp.PlainAuth("", cfg.Smtp.User, cfg.Smtp.Pass, hp[0])
-
-	var content_type string = "Content-Type: text/html; charset=UTF-8"
-	msg := []byte("To: " + to + "\r\nFrom: " + cfg.Smtp.User + "\r\nSubject: " + subject + "\r\n" + content_type + "\r\n\r\n" + content)
-	send_to := strings.Split(to, cfg.Smtp.Spliter)
-
-	err := smtp.SendMail(cfg.Smtp.Addr, auth, cfg.Smtp.User, send_to, msg)
-	return err
 }
 
 //检查调用IP合法性函数
@@ -86,6 +117,5 @@ func isValid(Addr string, allowList []string) (authorized bool) {
 			}
 		}
 	}
-	log.Println("client", Addr, "auth", authorized)
 	return authorized
 }
