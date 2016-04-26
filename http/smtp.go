@@ -17,30 +17,30 @@ func configSmtpRoutes() {
 		allowList := strings.Split(g.Config().Http.WhiteList, ",")
 		authorized := isValid(addr, allowList)
 
+		//授权检查
 		if authorized == false {
-			http.Error(w, "{\"status\":403,\"msg\":\"remote not in whitelist\"}", http.StatusBadRequest)
+			http.Error(w, "remote not in whitelist", http.StatusBadRequest)
 			return
 		}
 
 		if r.ContentLength == 0 {
-			http.Error(w, "{\"status\":404,\"msg\":\"body is blank\"}", http.StatusBadRequest)
+			http.Error(w, "body is blank", http.StatusBadRequest)
 			return
 		}
 
-		err := r.ParseMultipartForm(32 << 20)
+		err := r.ParseMultipartForm(g.Config().Smtp.MaxBytes)
+
 		if err != nil {
-			http.Error(w, "{\"status\":400,\"msg\":\"param prase error\"}", http.StatusInternalServerError)
+			http.Error(w, "param prase error", http.StatusBadRequest)
 			return
 		}
 
 		if len(r.Form["tos"]) == 0 || len(r.Form["content"]) == 0 || len(r.Form["subject"]) == 0 {
-			http.Error(w, "{\"status\":400,\"msg\":\"param tos,content or subject lost\"}", http.StatusBadRequest)
+			http.Error(w, "param tos,content or subject lost", http.StatusBadRequest)
 			return
 		}
 
 		e := email.NewEmail()
-		//发件人
-		e.From = g.Config().Smtp.User
 		//收件人
 		e.To = strings.Split(r.Form.Get("tos"), g.Config().Smtp.Spliter)
 		//主题
@@ -50,6 +50,7 @@ func configSmtpRoutes() {
 		if len(r.Form.Get("cc")) != 0 {
 			e.Cc = strings.Split(r.Form.Get("cc"), g.Config().Smtp.Spliter)
 		}
+
 		//密送，可选
 		if len(r.Form.Get("bcc")) != 0 {
 			e.Bcc = strings.Split(r.Form.Get("bcc"), g.Config().Smtp.Spliter)
@@ -74,7 +75,7 @@ func configSmtpRoutes() {
 				file, err := files[i].Open()
 				defer file.Close()
 				if err != nil {
-					http.Error(w, "{\"status\":503,\"msg\":\"open attach file stream error\"}", http.StatusInternalServerError)
+					http.Error(w, "open attach file stream error", http.StatusInternalServerError)
 					return
 				}
 				//attach each file to email
@@ -82,15 +83,35 @@ func configSmtpRoutes() {
 			}
 		}
 
-		hp := strings.Split(g.Config().Smtp.Addr, ":")
-		auth := smtp.PlainAuth("", g.Config().Smtp.User, g.Config().Smtp.Pass, hp[0])
-		error := e.Send(g.Config().Smtp.Addr, auth)
+		var server, user, passwd string
+		//smtp服务器，如果没有则使用默认配置
+		if len(r.Form.Get("server")) != 0 && len(r.Form.Get("user")) != 0 && len(r.Form.Get("passwd")) != 0 {
+			server = r.Form.Get("server")
+			user = r.Form.Get("user")
+			passwd = r.Form.Get("passwd")
+		} else {
+			server = g.Config().Smtp.Addr
+			user = g.Config().Smtp.User
+			passwd = g.Config().Smtp.Pass
+		}
+
+		//发件人，可以设置成 San Zhang <zhangsan@example.com> 这种形式(注意不能有非ascii字符)，如果不设置，默认为登陆使用的账号
+		if len(r.Form.Get("from")) != 0 {
+			e.From = r.Form.Get("from")
+		} else {
+			e.From = user
+		}
+
+		hp := strings.Split(server, ":")
+		auth := smtp.PlainAuth("", user, passwd, hp[0])
+		//暂时不支持TLS/StartTLS等加密认证
+		error := e.Send(server, auth)
 		if error != nil {
-			log.Println(error)
-			http.Error(w, "{\"status\":500,\"msg\":\"send mail error\"}", http.StatusBadRequest)
+			log.Println("[ERROR]", addr, e.From, e.To, e.Subject, error)
+			http.Error(w, error.Error(), http.StatusBadRequest)
 			return
 		}
-		log.Println(addr, e.To, e.Subject)
+		log.Println("[INFO]", addr, e.From, e.To, e.Subject)
 		w.Write([]byte("{\"status\":0,\"msg\":\"ok\"}"))
 	})
 }

@@ -19,6 +19,7 @@ type SmtpConfig struct {
 	User     string `json:"user"`
 	Pass     string `json:"pass"`
 	Spliter  string `json:"spliter"`
+	MaxBytes int64  `json:"maxbytes"`
 	Interval int    `json:"interval"`
 	Timeout  int    `json:"timeout"`
 }
