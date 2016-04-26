@@ -129,7 +129,7 @@ func isValid(Addr string, allowList []string) (authorized bool) {
 					authorized = true
 				}
 			} else {
-				log.Println("ip list error")
+				log.Fatalln("ip list error")
 			}
 		} else {
 			//log.Println("Contains ip ")
