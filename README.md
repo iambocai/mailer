@@ -31,6 +31,7 @@ chmod 755 control
 - 其它应该都认识吧。。
 
 ##API
+-----------------------
 
 ####发送普通邮件
 
@@ -55,8 +56,19 @@ chmod 755 control
 
 **请求响应：**
 
-成功：ok
+成功：{"status":0,"msg":"ok"}
+
 失败：错误消息
+
+**代码示例**
+
+```shell 
+:~$   curl http://proxy.zuoyebang.com:1925/api/mail -XPOST -d 'tos=iambocai@163.com,test@163.com&subject=Hello&content=word'
+:~$   {"status":0,"msg":"ok"}
+:~$   curl http://proxy.zuoyebang.com:1925/api/mail -XPOST -d 'tos=iambocai@163.com,test@163.com&subject=Hello&content=<h1>你好</h1><br/><strong>world</strong>&format=html'
+:~$   {"status":0,"msg":"ok"}
+```
+
 
 ####发送带附件的邮件
 
@@ -71,7 +83,8 @@ chmod 755 control
 |tos|是|	邮件收件人列表|多个用英文逗号,分割，分割符号可以在配置中修改|
 |subject|是|邮件主题|请使用utf8编码|
 |content|是|邮件正文|请使用utf8编码|
-|attachments|是|附件文件|请注意不要超过配置中设置的文件大小限制|
+|attachNum|是|附件文件数|必须是大于0的整数N|
+|attach1..attachN|是|附件文件|请注意所有文件大小之和不要超过配置中设置的文件大小限制|
 |format|否|邮件正文的格式|默认为text，可设置为text或html|
 |from|否|发件人|不能含有非ASCII字符，不建议设置|
 |server|否|自定义SMTP服务器，格式如：smtp.exmail.qq.com:25|如要自定义则server，user，passwd必须同时设定，否则使用配置中的信息|
@@ -79,11 +92,44 @@ chmod 755 control
 |passwd|否|登陆邮箱使用的密码，如123456|如要自定义则server，user，passwd必须同时设定，否则使用配置中的信息|
 
 
-
 **请求响应：**
 
-成功：ok
+成功：{"status":0,"msg":"ok"}
+
 失败：错误消息
+
+**代码示例**
+
+```python
+
+#!/usr/bin/env python
+# encoding: UTF-8
+ 
+from poster.encode import multipart_encode
+from poster.streaminghttp import register_openers
+import urllib2
+# 在 urllib2 上注册 http 流处理句柄
+register_openers()
+# 开始对文件 "DSC0001.jpg" 的 multiart/form-data 编码
+# "image1" 是参数的名字，一般通过 HTML 中的 <input> 标签的 name 参数设置
+# headers 包含必须的 Content-Type 和 Content-Length
+# datagen 是一个生成器对象，返回编码过后的参数
+datagen, headers = multipart_encode({
+    "tos":"iambocai@163.com",
+    "content":"<h1>hello, world</h1>",
+    "subject":"hello",
+    "format":"html",
+    "attachNum":2,
+    "attach1": open("file1.txt", "rb"),
+    "attach2": open("file2.txt", "rb")
+    })                                                                                                                                                           
+# 创建请求对象
+request = urllib2.Request("http://127.0.0.1:1925/api/attachmail", datagen, headers)
+# 实际执行请求并取得返回
+print urllib2.urlopen(request).read()
+
+````
+
 
 
 ##FAQ

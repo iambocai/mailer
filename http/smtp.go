@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
+	"strconv"
 	"strings"
 
 	"github.com/iambocai/mailer/g"
@@ -86,21 +87,30 @@ func SendMailBySmtp(w http.ResponseWriter, r *http.Request, hasAttach bool) {
 
 	//附件，可选
 	if hasAttach == true {
+		n, err := strconv.Atoi(r.Form.Get("attachNum"))
+		if err != nil {
+			http.Error(w, "attachNum must exists and bigger than 0", http.StatusBadRequest)
+			return
+		}
+
 		m := r.MultipartForm
 
-		//get the *fileheaders
-		files := m.File["attachments"]
-		for i, _ := range files {
-			//for each fileheader, get a handle to the actual file
-			file, err := files[i].Open()
-			defer file.Close()
-			if err != nil {
-				http.Error(w, "open attach file stream error", http.StatusInternalServerError)
-				return
+		for i := 1; i <= n; i++ {
+			//get the *fileheaders
+			files := m.File["attach"+strconv.Itoa(i)]
+			for i, _ := range files {
+				//for each fileheader, get a handle to the actual file
+				file, err := files[i].Open()
+				defer file.Close()
+				if err != nil {
+					http.Error(w, "open attach file stream error", http.StatusInternalServerError)
+					return
+				}
+				//attach each file to email
+				e.Attach(file, files[i].Filename, "")
 			}
-			//attach each file to email
-			e.Attach(file, files[i].Filename, "")
 		}
+
 	}
 
 	//smtp服务器，如果没有则使用默认配置
@@ -132,6 +142,7 @@ func SendMailBySmtp(w http.ResponseWriter, r *http.Request, hasAttach bool) {
 	}
 	log.Println("[INFO]", addr, e.From, e.To, e.Subject)
 	w.Write([]byte("{\"status\":0,\"msg\":\"ok\"}"))
+	return
 }
 
 //检查调用IP合法性函数

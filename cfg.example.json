@@ -3,13 +3,14 @@
     "http": {
         "enabled": true,
         "listen": ":1925",
-		"whitelist":"127.0.0.1,192.168.90.0/24"
+        "whitelist": "127.0.0.1,192.168.90.0/24"
     },
-	"smtp": {
+    "smtp": {
         "addr": "smtp.163.com:25",
-		"user": "user@163.com",
-		"pass":"password",
-		"spliter": ",",
+        "user": "user@163.com",
+        "pass": "password",
+        "spliter": ",",
+        "maxbytes": 104857600,
         "interval": 60,
         "timeout": 1000
     }
