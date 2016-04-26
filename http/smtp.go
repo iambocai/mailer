@@ -39,10 +39,23 @@ func configSmtpRoutes() {
 		}
 
 		e := email.NewEmail()
+		//发件人
 		e.From = g.Config().Smtp.User
+		//收件人
 		e.To = strings.Split(r.Form.Get("tos"), g.Config().Smtp.Spliter)
+		//主题
 		e.Subject = r.Form.Get("subject")
-		//消息体默认为text，如果format设置为html，则以html方式发送
+
+		//抄送，可选
+		if len(r.Form.Get("cc")) != 0 {
+			e.Cc = strings.Split(r.Form.Get("cc"), g.Config().Smtp.Spliter)
+		}
+		//密送，可选
+		if len(r.Form.Get("bcc")) != 0 {
+			e.Bcc = strings.Split(r.Form.Get("bcc"), g.Config().Smtp.Spliter)
+		}
+
+		//消息体格式，可选。默认为text，如果format设置为html，则以html方式发送
 		if len(r.Form.Get("format")) != 0 && r.Form.Get("format") == "html" {
 			e.HTML = []byte(r.Form.Get("content"))
 
@@ -50,6 +63,7 @@ func configSmtpRoutes() {
 			e.Text = []byte(r.Form.Get("content"))
 		}
 
+		//附件，可选
 		if len(r.Form.Get("hasAttach")) != 0 && r.Form.Get("hasAttach") == "1" {
 			m := r.MultipartForm
 
@@ -76,7 +90,7 @@ func configSmtpRoutes() {
 			http.Error(w, "{\"status\":500,\"msg\":\"send mail error\"}", http.StatusBadRequest)
 			return
 		}
-
+		log.Println(addr, e.To, e.Subject)
 		w.Write([]byte("{\"status\":0,\"msg\":\"ok\"}"))
 	})
 }
@@ -103,6 +117,5 @@ func isValid(Addr string, allowList []string) (authorized bool) {
 			}
 		}
 	}
-	log.Println("client", Addr, "auth", authorized)
 	return authorized
 }
