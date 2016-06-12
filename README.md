@@ -63,9 +63,9 @@ chmod 755 control
 **代码示例**
 
 ```shell 
-:~$   curl http://proxy.zuoyebang.com:1925/api/mail -XPOST -d 'tos=iambocai@163.com,test@163.com&subject=Hello&content=word'
+:~$   curl http://127.0.0.1:1925/api/mail -XPOST -d 'tos=iambocai@163.com,test@163.com&subject=Hello&content=word'
 :~$   {"status":0,"msg":"ok"}
-:~$   curl http://proxy.zuoyebang.com:1925/api/mail -XPOST -d 'tos=iambocai@163.com,test@163.com&subject=Hello&content=<h1>你好</h1><br/><strong>world</strong>&format=html'
+:~$   curl http://127.0.0.1:1925/api/mail -XPOST -d 'tos=iambocai@163.com,test@163.com&subject=Hello&content=<h1>你好</h1><br/><strong>world</strong>&format=html'
 :~$   {"status":0,"msg":"ok"}
 ```
 
